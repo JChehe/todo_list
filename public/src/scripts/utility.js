@@ -2,8 +2,7 @@ var LIB = LIB || {};
 
 LIB.namespace = function(ns_string) {
     var parts = ns_string.split("."),
-        parent = LIB,
-        i;
+        parent = LIB;
 
     if (parts[0] === "LIB") {
         parts = parts.slice(1);
@@ -21,7 +20,7 @@ LIB.namespace = function(ns_string) {
 LIB.namespace("util.Event");
 LIB.namespace("util.Dom");
 LIB.namespace("util.Helper");
-LIB.namespace("util.localStroe");
+LIB.namespace("util.localStorage");
 
 
 ;(function(global, app){
@@ -30,11 +29,8 @@ LIB.namespace("util.localStroe");
 
 	tempHelper.isString = function(arg){
 		return typeof arg === "string"; 
-	}
+	};
 
-    tempHelper.each = function(arr, fn){
-
-    }
 })(window, LIB);
 
 
@@ -50,18 +46,18 @@ LIB.namespace("util.localStroe");
     app.util.Dom = tempDom;
     tempDom.qs = global.qs = function(selector, context){
     	if($helper.isString(context)){
-    		context = tempDom.qs(context)
+    		context = tempDom.qs(context);
     	}
     	context = context == undefined ? document : context;
-    	return context.querySelector(selector)
-    }
+    	return context.querySelector(selector);
+    };
     tempDom.qsa = global.qsa = function(selector, context) {
     	if($helper.isString(context)){
-    		context = tempDom.qs(context)
+    		context = tempDom.qs(context);
     	}
         context = context == undefined ? document : context;
         return context.querySelectorAll(selector);
-    }
+    };
 
     tempDom.closest = function(ele, tagName){
     	if($helper.isString(ele)) ele = qs(ele);
@@ -78,14 +74,14 @@ LIB.namespace("util.localStroe");
     			return parent;
     		}
     	}
-    }
+    };
     tempDom.remove = function(ele){
     	if($helper.isString(ele)) ele = qs(ele);
 
     	if(ele){
     		ele.parentNode.removeChild(ele);
     	}
-    }
+    };
 
 })(window, LIB);
 
@@ -105,54 +101,54 @@ LIB.namespace("util.localStroe");
         		el = $dom.qs(el);
         	}
             el.addEventListener(type, fn, !!isUseCapture);
-        }
+        };
         tempEvent.removeListener = function(el, type, fn, isUseCapture) {
         	if($helper.isString(el)){
         		el = $dom.qs(el);
         	}
             el.removeEventListener(type, fn, !!isUseCapture);
-        }
+        };
     } else if (document.attachEvent) {
         tempEvent.addListener = function(el, type, fn) {
         	if($helper.isString(el)){
         		el = $dom.qs(el);
         	}
             el.attachEvent("on" + type, fn);
-        }
+        };
         tempEvent.removeListener = function(el, type, fn) {
         	if($helper.isString(el)){
         		el = $dom.qs(el);
         	}
             el.detachEvent("on" + type, fn);
-        }
+        };
     } else {
         tempEvent.addListener = function(el, type, fn) {
         	if($helper.isString(el)){
         		el = $dom.qs(el);
         	}
             el["on" + type] = fn;
-        }
+        };
         tempEvent.removeListener = function(el, type, fn) {
         	if($helper.isString(el)){
         		el = $dom.qs(el);
         	}
             el["on" + type] = null;
-        }
+        };
     }
 
     tempEvent.getEvent = function(event) {
         return event ? event : window.event;
-    }
+    };
     tempEvent.getTarget = function(event) {
         return event.target || event.srcElement;
-    }
+    };
     tempEvent.preventDefault = function(event) {
         if (event.preventDefault) {
-            event.preventDefault()
+            event.preventDefault();
         } else {
             event.returnValue = false;
         }
-    }
+    };
 
     tempEvent.stopPropagation = function(event) {
         if (event.stopPropagation) {
@@ -160,7 +156,7 @@ LIB.namespace("util.localStroe");
         } else {
             event.cancelBubble = true;
         }
-    }
+    };
 
     tempEvent.delegate = function(target, selector, type, fn, isUseCapture){
     	function dispatchEvent(event){
@@ -174,7 +170,7 @@ LIB.namespace("util.localStroe");
     	}
 
     	$event.addListener(target, type, dispatchEvent, !!isUseCapture);
-    }
+    };
 
     
 })(window, LIB);
@@ -183,6 +179,14 @@ LIB.namespace("util.localStroe");
 
 ;(function(global, app){
     var tempStore = {};
-    var $localStroe = app.util.localStroe = tempStore;
+    var $localStorage = app.util.localStorage = tempStore;
 
+    tempStore.set = function(key, value){
+        localStorage.setItem(key, JSON.stringify(value));
+    };
+
+    tempStore.get = function(key){
+        return JSON.parse(localStorage.getItem(key));
+    };
+    
 })(window, LIB);

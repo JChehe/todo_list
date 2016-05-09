@@ -2,12 +2,12 @@ var LIB = LIB || {};
 
 
 ;
-(function(LIB) {
+(function(window, LIB) {
     var $dom = LIB.util.Dom,
         $event = LIB.util.Event;
+    $localStorage = LIB.util.localStorage;
 
-
-    function app() {
+    function App() {
         this.ENTER_KEY = 13;
         this.ESCAPE_KEY = 27;
 
@@ -20,67 +20,41 @@ var LIB = LIB || {};
         this.$newTodo = qs(".new-todo");
         this.$filters = qs(".filters");
 
-        this.data = [{
-            id: 1,
-            value: "123",
-            status: "active"
-        }, {
-            id: 2,
-            value: "456",
-            status: "completed"
-        }, {
-            id: 3,
-            value: "789",
-            status: "completed"
-        }, {
-            id: 4,
-            value: "101",
-            status: "completed"
-        }, {
-            id: 5,
-            value: "102",
-            status: "completed"
-        }, {
-            id: 6,
-            value: "103",
-            status: "completed"
-        }]
+        this.data = [];
     }
 
-    app.prototype.init = function() {
+    App.prototype.init = function() {
+        var localData = $localStorage.get("data");
+        this.data = localData;
         this._bind();
-        this._filterItem(window.location.hash)
-    }
+        this._filterItem(getHash());
+        this._checkIsAllCompleted();
+    };
 
 
 
-    app.prototype._addItemHandler = function(arg_obj) {
-        var newItem = createItem({
-            id: arg_obj.id,
-            value: arg_obj.val
-        });
-
+    App.prototype._addItemHandler = function(arg_obj) {
+        arg_obj.status = "active";
+        var newItem = createItem(arg_obj);
         this.$newTodo.value = "";
+        this._method.add.call(this, arg_obj);
 
-        this._method.add.call(this, newItem);
-
-        this.$todoList.appendChild(newItem);
+        if (getHash() !== "completed") {
+            this.$todoList.appendChild(newItem);
+        }
         this._updateLeftItemCount();
+    };
 
-    }
-
-    app.prototype._removeItemHandler = function(id) {
+    App.prototype._removeItemHandler = function(id) {
         var ele = qs("[data-id='" + id + "']");
         if (ele) {
             this.$todoList.removeChild(ele);
-
             this._method.delById.call(this, id);
-
             this._updateLeftItemCount();
         }
-    }
+    };
 
-    app.prototype._editStatus = function(id) {
+    App.prototype._editStatus = function(id) {
         var ele = qs("[data-id='" + id + "']");
         if (ele) {
             var label = qs("label", ele);
@@ -92,9 +66,9 @@ var LIB = LIB || {};
 
             editInput.focus();
         }
-    }
+    };
 
-    app.prototype._editDoneHandler = function(arg_obj) {
+    App.prototype._editDoneHandler = function(arg_obj) {
         var ele = qs("[data-id='" + arg_obj.id + "']");
 
         if (ele) {
@@ -104,11 +78,10 @@ var LIB = LIB || {};
             label.innerHTML = arg_obj.value;
             ele.classList.remove('editing');
             $dom.remove(editInput);
-
         }
-    }
+    };
 
-    app.prototype._updateLeftItemCount = function() {
+    App.prototype._updateLeftItemCount = function() {
         var counter = 0;
         var ele = qs("strong", this.$todoItemCounter);
 
@@ -117,7 +90,7 @@ var LIB = LIB || {};
                 if (cData.status === "active") {
                     counter++;
                 }
-            })
+            });
             ele.innerHTML = counter;
 
             if (counter < this.data.length) {
@@ -125,14 +98,16 @@ var LIB = LIB || {};
             } else {
                 this._toggleClearCompleted(false);
             }
+
+            this._checkItemLength();
         }
-    }
+    };
 
 
-    app.prototype._setItemCompleted = function(id) {
+    App.prototype._setItemCompleted = function(id) {
         var ele = qs("[data-id='" + id + "']", this.$todoList),
             checkedToggle = qs(".toggle", ele),
-            hash = window.location.hash.replace(/^#\//, "");
+            hash = getHash();
 
         if (ele) {
             checkedToggle.checked = true;
@@ -140,17 +115,16 @@ var LIB = LIB || {};
             this._method.updateById.call(this, id, "status", "completed");
             this._updateLeftItemCount();
 
-
             if (hash === "active") {
-                ele.style.display = "none"
+                ele.style.display = "none";
             }
         }
-    }
+    };
 
-    app.prototype._setItemActive = function(id) {
+    App.prototype._setItemActive = function(id) {
         var ele = qs("[data-id='" + id + "']", this.$todoList),
             checkedToggle = qs(".toggle", ele),
-            hash = window.location.hash.replace(/^#\//, "");
+            hash = getHash();
 
         if (ele) {
             checkedToggle.checked = false;
@@ -160,13 +134,13 @@ var LIB = LIB || {};
             this._updateLeftItemCount();
 
             if (hash === "completed") {
-                ele.style.display = "none"
+                ele.style.display = "none";
             }
         }
-    }
+    };
 
-    app.prototype._renderMore = function(arg_arr) {
-        var cacheStr = ""
+    App.prototype._renderMore = function(arg_arr) {
+        var cacheStr = "";
         for (var i = 0, len = arg_arr.length; i < len; i++) {
             cacheStr += createItemStr(arg_arr[i]);
         }
@@ -174,17 +148,17 @@ var LIB = LIB || {};
         this.$todoList.innerHTML = cacheStr;
         this._updateLeftItemCount();
 
-    }
+    };
 
-    app.prototype._filterItem = function(hash) {
+    App.prototype._filterItem = function(hash) {
         var filterArr,
             filtersBtns = qsa("li a", this.$filters);
 
-        hash = hash ? hash.replace(/^#\//, "") : "";
+        hash = hash ? hash : getHash();
 
         [].slice.call(filtersBtns).forEach(function(curBtn) {
             curBtn.classList.remove("selected");
-        })
+        });
 
         if (hash === "active") {
             filterArr = this._filterData("active");
@@ -197,10 +171,10 @@ var LIB = LIB || {};
             filtersBtns[0].classList.add("selected");
         }
 
-        this._renderMore(filterArr)
-    }
+        this._renderMore(filterArr);
+    };
 
-    app.prototype._filterData = function(status) {
+    App.prototype._filterData = function(status) {
         var pendingArr = this.data,
             filterArr;
         filterArr = pendingArr.filter(function(curItem) {
@@ -210,11 +184,11 @@ var LIB = LIB || {};
         });
 
         return filterArr;
-    }
+    };
 
-    app.prototype._toggleClearCompleted = function(isCompleted) {
-        if (isCompleted == undefined) {
-            isCompleted = this._method.hasCompleted.call(this)
+    App.prototype._toggleClearCompleted = function(isCompleted) {
+        if (isCompleted === undefined) {
+            isCompleted = this._method.hasCompleted.call(this);
         }
 
         var style = this.$clearCompleted.style;
@@ -223,9 +197,25 @@ var LIB = LIB || {};
         } else {
             style.display = "none";
         }
-    }
+    };
 
-    app.prototype._method = (function() {
+    App.prototype._checkIsAllCompleted = function() {
+        var isAllCompleted = this._method.isAllCompleted.call(this);
+        if (isAllCompleted) {
+            this.$toggleAll.checked = true;
+        }
+    };
+
+    App.prototype._checkItemLength = function(){
+        if(this.data.length === 0){
+            this.$toggleAll.style.display = "none";
+        }else{
+            this.$toggleAll.style.display = "block";
+        }
+    };
+
+    // methods set of processing data
+    App.prototype._method = (function() {
 
         function _getIndexById(id, that) {
             for (var i = 0, len = that.data.length; i < len; i++) {
@@ -236,41 +226,60 @@ var LIB = LIB || {};
         }
 
         function delById(id) {
-            console.log(this)
             var index = _getIndexById(id, this);
             this.data.splice(index, 1);
+            $localStorage.set("data", this.data);
         }
 
         function updateById(id, key, val) {
-            console.log(this)
             var index = _getIndexById(id, this),
                 item = this.data[index];
 
-            console.log(item)
             item[key] = val;
+            $localStorage.set("data", this.data);
         }
 
         function add(arg_obj) {
-            console.log(this)
             this.data.push(arg_obj);
+            $localStorage.set("data", this.data);
         }
 
         function setAllCompleted() {
             this.data.forEach(function(cData) {
                 cData.status = "completed";
-            })
+            });
+            $localStorage.set("data", this.data);
         }
 
         function setAllActive() {
             this.data.forEach(function(cData) {
                 cData.status = "active";
-            })
+            });
+            $localStorage.set("data", this.data);
         }
 
         function hasCompleted() {
             this.data.some(function(cData) {
-                return cData.status === "completed"
-            })
+                return cData.status === "completed";
+            });
+        }
+
+        function isAllCompleted() {
+            if(this.data.length === 0){
+                return false;
+            }
+            return this.data.every(function(cData) {
+                return cData.status === "completed";
+            });
+        }
+
+        function isAllActive() {
+            if(this.data.length === 0){
+                return false;
+            }
+            return this.data.every(function(cData) {
+                return cData.status === "active";
+            });
         }
 
 
@@ -280,11 +289,15 @@ var LIB = LIB || {};
             add: add,
             setAllActive: setAllActive,
             setAllCompleted: setAllCompleted,
-            hasCompleted: hasCompleted
-        }
+            hasCompleted: hasCompleted,
+            isAllCompleted: isAllCompleted,
+            isAllActive: isAllActive
+        };
     })();
 
-    app.prototype._bind = function() {
+
+    // bind event
+    App.prototype._bind = function() {
         var that = this;
 
         // press Enter to add newItem
@@ -298,7 +311,7 @@ var LIB = LIB || {};
             if (keyCode === that.ENTER_KEY) {
                 that._addItemHandler({
                     id: Date.now(),
-                    val: val
+                    value: val
                 });
             }
         });
@@ -312,10 +325,10 @@ var LIB = LIB || {};
 
             that._addItemHandler({
                 id: Date.now(),
-                val: val
+                value: val
             });
 
-        })
+        });
 
 
         // toggle status : active or completed
@@ -325,9 +338,11 @@ var LIB = LIB || {};
                 curId = curItem.getAttribute("data-id");
 
             if (this.checked) {
-                that._setItemCompleted(curId)
+                that._setItemCompleted(curId);
+                that._checkIsAllCompleted();
             } else {
-                that._setItemActive(curId)
+                that._setItemActive(curId);
+                that.$toggleAll.checked = false;
             }
         });
 
@@ -337,7 +352,6 @@ var LIB = LIB || {};
                 curId = curItem.getAttribute("data-id");
 
             that._removeItemHandler(curId);
-            console.log(that.$todoList.children)
         });
 
         // edit status
@@ -348,6 +362,7 @@ var LIB = LIB || {};
             that._editStatus(curId);
         });
 
+        // submit when press enter key
         $event.delegate(that.$todoList, "input.edit", "keydown", function(event) {
             var curItem = $dom.closest(this, "li"),
                 curId = curItem.getAttribute("data-id"),
@@ -355,7 +370,7 @@ var LIB = LIB || {};
                 keyCode = event.keyCode;
 
             if (val === "") {
-                that._removeItemHandler(curId)
+                that._removeItemHandler(curId);
                 return;
             }
             if (keyCode === that.ENTER_KEY || keyCode === that.ESCAPE_KEY) {
@@ -366,6 +381,7 @@ var LIB = LIB || {};
             }
         });
 
+        // Double-click to edit
         $event.delegate(that.$todoList, "input.edit", "blur", function(event) {
             var curItem = $dom.closest(this, "li"),
                 curId = curItem.getAttribute("data-id"),
@@ -373,7 +389,7 @@ var LIB = LIB || {};
                 keyCode = event.keyCode;
 
             if (val === "") {
-                that._removeItemHandler(curId)
+                that._removeItemHandler(curId);
                 return;
             }
 
@@ -385,15 +401,16 @@ var LIB = LIB || {};
 
         // filter
         $event.addListener(window, "hashchange", function(event) {
-            var hash = window.location.hash;
+            var hash = getHash();
             that._filterItem(hash);
-
         });
 
 
         // toggle-all
         $event.addListener(that.$toggleAll, "click", function(event) {
-            var hash = window.location.hash.replace(/^#\//, "");
+            var hash = getHash(),
+                isAllCompleted;
+
             if (this.checked) {
                 if (hash === "active") {
                     that._method.setAllCompleted.call(that);
@@ -403,39 +420,40 @@ var LIB = LIB || {};
                     that._renderMore(that.data);
                 } else {
                     [].slice.call(that.$todoList.children).forEach(function(item) {
-                        that._setItemCompleted(item.getAttribute("data-id"))
-                    })
-
+                        that._setItemCompleted(item.getAttribute("data-id"));
+                    });
                 }
             } else {
                 if (hash === "active") {
                     that._method.setAllActive.call(that);
-                    that._renderMore(that.data)
+                    that._renderMore(that.data);
                 } else if (hash === "completed") {
                     that._method.setAllActive.call(that);
                     that._renderMore([]);
                 } else {
-
                     [].slice.call(that.$todoList.children).forEach(function(item) {
-                        that._setItemActive(item.getAttribute("data-id"))
-                    })
+                        that._setItemActive(item.getAttribute("data-id"));
+                    });
                 }
             }
 
-        })
+            that._checkIsAllCompleted();
+        });
 
+        // clear completed item
         $event.addListener(that.$clearCompleted, "click", function(event) {
 
-            for(var i = 0; i < that.data.length; i++){
-                var cData = that.data[i]
+            for (var i = 0; i < that.data.length; i++) {
+                var cData = that.data[i];
                 if (cData.status === "completed") {
                     that._removeItemHandler(cData.id);
                     i--;
                 }
             }
-        })
-    }
+        });
+    };
 
+    // item template
     function createItemStr(arg_obj) {
 
         var statusObj = {};
@@ -443,8 +461,9 @@ var LIB = LIB || {};
             statusObj = {
                 className: "completed",
                 checked: "checked"
-            }
+            };
         }
+
         return '<li data-id="' + arg_obj.id + '" class="' + (statusObj.className || "") + '">' +
             '<div class="view">' +
             '<input class="toggle" type="checkbox" ' + (statusObj.checked || "") + '>' +
@@ -456,18 +475,16 @@ var LIB = LIB || {};
 
     function createItem(arg_obj) {
         var tempParent = document.createElement("div");
-        console.log(arg_obj)
         var itemStr = createItemStr(arg_obj);
         tempParent.innerHTML = itemStr;
 
         return tempParent.children[0];
     }
 
+    function getHash() {
+        return window.location.hash.replace(/^#\//, "");
+    }
 
+    window.App = App;
 
-    (new app()).init()
-
-
-
-
-})(LIB);
+})(window, LIB);
