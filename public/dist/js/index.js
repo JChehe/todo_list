@@ -4,8 +4,8 @@ var LIB = LIB || {};
 ;
 (function(window, LIB) {
     var $dom = LIB.util.Dom,
-        $event = LIB.util.Event;
-    $localStorage = LIB.util.localStorage;
+        $event = LIB.util.Event,
+        $localStorage = LIB.util.localStorage;
 
     function App() {
         this.ENTER_KEY = 13;
