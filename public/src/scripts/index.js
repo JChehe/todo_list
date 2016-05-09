@@ -24,7 +24,7 @@ var LIB = LIB || {};
     }
 
     App.prototype.init = function() {
-        var localData = $localStorage.get("data");
+        var localData = $localStorage.get("data") || [];
         this.data = localData;
         this._bind();
         this._filterItem(getHash());
